@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Pac-Man Game</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #000;
+        }
+        #gameBoard {
+            border: 2px solid blue;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameBoard" width="450" height="500"></canvas>
+    <script>
+        const canvas = document.getElementById('gameBoard');
+        const ctx = canvas.getContext('2d');
+
+        const CELL_SIZE = 25;
+        const PACMAN_SIZE = CELL_SIZE - 2;
+        const GHOST_SIZE = CELL_SIZE - 2;
+        const DOT_SIZE = 4;
+
+        const ROWS = 20;
+        const COLS = 18;
+
+        let pacman = { x: 1, y: 1, direction: 'right' };
+        let ghosts = [
+            { x: 8, y: 9, color: 'red' },
+            { x: 9, y: 9, color: 'pink' },
+            { x: 9, y: 10, color: 'cyan' },
+            { x: 10, y: 10, color: 'orange' }
+        ];
+
+        let score = 0;
+        let lastUpdateTime = 0;
+        const UPDATE_INTERVAL = 200; // Update every 200ms (5 times per second)
+
+        // 0: empty, 1: wall, 2: dot, 3: power pellet
+        let board = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,2,2,2,2,2,1,2,2,2,2,1,2,2,2,2,2,1],
+            [1,3,1,1,1,2,1,2,1,1,2,1,2,1,1,1,3,1],
+            [1,2,1,2,2,2,2,2,2,2,2,2,2,2,2,1,2,1],
+            [1,2,1,2,1,1,2,1,1,1,1,2,1,1,2,1,2,1],
+            [1,2,2,2,2,2,3,2,2,2,2,3,2,2,2,2,2,1],
+            [1,2,1,1,1,1,2,1,1,1,1,2,1,1,1,1,2,1],
+            [1,2,2,2,2,2,2,1,0,0,1,2,2,2,2,2,2,1],
+            [1,1,1,1,1,1,2,1,0,0,1,2,1,1,1,1,1,1],
+            [0,0,0,0,0,1,2,1,0,0,1,2,1,0,0,0,0,0],
+            [1,1,1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1],
+            [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+            [1,2,1,1,1,1,2,1,1,1,1,2,1,1,1,1,2,1],
+            [1,3,2,2,2,1,2,2,2,2,2,2,1,2,2,2,3,1],
+            [1,1,1,1,2,1,2,1,2,2,1,2,1,2,1,1,1,1],
+            [1,2,2,2,2,2,2,1,2,2,1,2,2,2,2,2,2,1],
+            [1,2,1,1,1,1,1,1,2,2,1,1,1,1,1,1,2,1],
+            [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+            [1,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ];
+
+        function drawBoard() {
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    if (board[row][col] === 1) {
+                        ctx.fillStyle = 'blue';
+                        ctx.fillRect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    } else if (board[row][col] === 2) {
+                        ctx.fillStyle = 'white';
+                        ctx.beginPath();
+                        ctx.arc(col * CELL_SIZE + CELL_SIZE / 2, row * CELL_SIZE + CELL_SIZE / 2, DOT_SIZE / 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (board[row][col] === 3) {
+                        ctx.fillStyle = 'white';
+                        ctx.beginPath();
+                        ctx.arc(col * CELL_SIZE + CELL_SIZE / 2, row * CELL_SIZE + CELL_SIZE / 2, DOT_SIZE, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        function drawPacman() {
+            ctx.fillStyle = 'yellow';
+            ctx.beginPath();
+            let startAngle, endAngle;
+            switch(pacman.direction) {
+                case 'right':
+                    startAngle = 0.2 * Math.PI;
+                    endAngle = 1.8 * Math.PI;
+                    break;
+                case 'left':
+                    startAngle = 1.2 * Math.PI;
+                    endAngle = 0.8 * Math.PI;
+                    break;
+                case 'up':
+                    startAngle = 1.7 * Math.PI;
+                    endAngle = 1.3 * Math.PI;
+                    break;
+                case 'down':
+                    startAngle = 0.7 * Math.PI;
+                    endAngle = 0.3 * Math.PI;
+                    break;
+            }
+            ctx.arc(pacman.x * CELL_SIZE + CELL_SIZE / 2, pacman.y * CELL_SIZE + CELL_SIZE / 2, PACMAN_SIZE / 2, startAngle, endAngle);
+            ctx.lineTo(pacman.x * CELL_SIZE + CELL_SIZE / 2, pacman.y * CELL_SIZE + CELL_SIZE / 2);
+            ctx.fill();
+        }
+
+        function drawGhosts() {
+            ghosts.forEach(ghost => {
+                ctx.fillStyle = ghost.color;
+                ctx.beginPath();
+                ctx.arc(ghost.x * CELL_SIZE + CELL_SIZE / 2, ghost.y * CELL_SIZE + CELL_SIZE / 2, GHOST_SIZE / 2, Math.PI, 2 * Math.PI);
+                ctx.lineTo(ghost.x * CELL_SIZE + CELL_SIZE, ghost.y * CELL_SIZE + CELL_SIZE);
+                ctx.lineTo(ghost.x * CELL_SIZE, ghost.y * CELL_SIZE + CELL_SIZE);
+                ctx.fill();
+            });
+        }
+
+        function drawScore() {
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.fillText(`Score: ${score}`, 10, 30);
+        }
+
+        function update() {
+            // Pacman movement
+            let newX = pacman.x;
+            let newY = pacman.y;
+
+            switch(pacman.direction) {
+                case 'right': newX++; break;
+                case 'left': newX--; break;
+                case 'up': newY--; break;
+                case 'down': newY++; break;
+            }
+
+            if (newX >= 0 && newX < COLS && newY >= 0 && newY < ROWS && board[newY][newX] !== 1) {
+                pacman.x = newX;
+                pacman.y = newY;
+
+                if (board[newY][newX] === 2) {
+                    score += 10;
+                    board[newY][newX] = 0;
+                } else if (board[newY][newX] === 3) {
+                    score += 50;
+                    board[newY][newX] = 0;
+                    // TODO: Implement power pellet effects
+                }
+            }
+
+            // Simple ghost movement (random)
+            ghosts.forEach(ghost => {
+                let directions = ['up', 'down', 'left', 'right'];
+                let validDirections = directions.filter(dir => {
+                    let newX = ghost.x;
+                    let newY = ghost.y;
+                    switch(dir) {
+                        case 'right': newX++; break;
+                        case 'left': newX--; break;
+                        case 'up': newY--; break;
+                        case 'down': newY++; break;
+                    }
+                    return newX >= 0 && newX < COLS && newY >= 0 && newY < ROWS && board[newY][newX] !== 1;
+                });
+
+                if (validDirections.length > 0) {
+                    let randomDir = validDirections[Math.floor(Math.random() * validDirections.length)];
+                    switch(randomDir) {
+                        case 'right': ghost.x++; break;
+                        case 'left': ghost.x--; break;
+                        case 'up': ghost.y--; break;
+                        case 'down': ghost.y++; break;
+                    }
+                }
+            });
+
+            // Check for collisions with ghosts
+            if (ghosts.some(ghost => ghost.x === pacman.x && ghost.y === pacman.y)) {
+                alert('Game Over! Your score: ' + score);
+                resetGame();
+            }
+        }
+
+        function resetGame() {
+            pacman = { x: 1, y: 1, direction: 'right' };
+            ghosts = [
+                { x: 8, y: 9, color: 'red' },
+                { x: 9, y: 9, color: 'pink' },
+                { x: 9, y: 10, color: 'cyan' },
+                { x: 10, y: 10, color: 'orange' }
+            ];
+            score = 0;
+            board = [
+                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+                [1,2,2,2,2,2,1,2,2,2,2,1,2,2,2,2,2,1],
+                [1,3,1,1,1,2,1,2,1,1,2,1,2,1,1,1,3,1],
+                [1,2,1,2,2,2,2,2,2,2,2,2,2,2,2,1,2,1],
+                [1,2,1,2,1,1,2,1,1,1,1,2,1,1,2,1,2,1],
+                [1,2,2,2,2,2,3,2,2,2,2,3,2,2,2,2,2,1],
+                [1,2,1,1,1,1,2,1,1,1,1,2,1,1,1,1,2,1],
+                [1,2,2,2,2,2,2,1,0,0,1,2,2,2,2,2,2,1],
+                [1,1,1,1,1,1,2,1,0,0,1,2,1,1,1,1,1,1],
+                [0,0,0,0,0,1,2,1,0,0,1,2,1,0,0,0,0,0],
+                [1,1,1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1],
+                [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+                [1,2,1,1,1,1,2,1,1,1,1,2,1,1,1,1,2,1],
+                [1,3,2,2,2,1,2,2,2,2,2,2,1,2,2,2,3,1],
+                [1,1,1,1,2,1,2,1,2,2,1,2,1,2,1,1,1,1],
+                [1,2,2,2,2,2,2,1,2,2,1,2,2,2,2,2,2,1],
+                [1,2,1,1,1,1,1,1,2,2,1,1,1,1,1,1,2,1],
+                [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+                [1,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3,1],
+                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+            ];
+        }
+
+        function gameLoop(currentTime) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBoard();
+            drawPacman();
+            drawGhosts();
+            drawScore();
+
+            if (currentTime - lastUpdateTime > UPDATE_INTERVAL) {
+                update();
+                lastUpdateTime = currentTime;
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'ArrowRight': pacman.direction = 'right'; break;
+                case 'ArrowLeft': pacman.direction = 'left'; break;
+                case 'ArrowUp': pacman.direction = 'up'; break;
+                case 'ArrowDown': pacman.direction = 'down'; break;
+            }
+        });
+
+        gameLoop();
+    </script>
+</body>
+</html>
