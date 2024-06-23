@@ -151,31 +151,75 @@ function createFirework() {
     return {
         x: Math.random() * canvas.width,
         y: canvas.height,
-        size: Math.random() * 2 + 1,
-        fillColor: `rgba(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255},1)`,
+        size: Math.random() * 3 + 2,
+        color: `hsl(${Math.random() * 360}, 100%, 50%)`,
         velocity: {
             x: Math.random() * 6 - 3,
-            y: Math.random() * -3 - 3
-        }
+            y: Math.random() * -15 - 10
+        },
+        exploded: false,
+        particles: []
+    }
+}
+
+function createParticle(x, y, color) {
+    return {
+        x: x,
+        y: y,
+        color: color,
+        size: Math.random() * 2 + 1,
+        velocity: {
+            x: Math.random() * 6 - 3,
+            y: Math.random() * 6 - 3
+        },
+        alpha: 1
     }
 }
 
 function drawFireworks() {
     fireworks.forEach((firework, index) => {
-        ctx.fillStyle = firework.fillColor;
-        ctx.beginPath();
-        ctx.arc(firework.x, firework.y, firework.size, 0, Math.PI * 2, true);
-        ctx.closePath();
-        ctx.fill();
+        if (!firework.exploded) {
+            ctx.fillStyle = firework.color;
+            ctx.beginPath();
+            ctx.arc(firework.x, firework.y, firework.size, 0, Math.PI * 2, true);
+            ctx.closePath();
+            ctx.fill();
 
-        firework.x += firework.velocity.x;
-        firework.y += firework.velocity.y;
-        firework.velocity.y += 0.05;
+            firework.x += firework.velocity.x;
+            firework.y += firework.velocity.y;
+            firework.velocity.y += 0.1;
 
-        if (firework.y > canvas.height) {
-            fireworks.splice(index, 1);
+            if (firework.velocity.y >= 0) {
+                firework.exploded = true;
+                for (let i = 0; i < 50; i++) {
+                    firework.particles.push(createParticle(firework.x, firework.y, firework.color));
+                }
+            }
+        } else {
+            firework.particles.forEach((particle, particleIndex) => {
+                ctx.globalAlpha = particle.alpha;
+                ctx.fillStyle = particle.color;
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2, true);
+                ctx.closePath();
+                ctx.fill();
+
+                particle.x += particle.velocity.x;
+                particle.y += particle.velocity.y;
+                particle.velocity.y += 0.05;
+                particle.alpha -= 0.02;
+
+                if (particle.alpha <= 0) {
+                    firework.particles.splice(particleIndex, 1);
+                }
+            });
+
+            if (firework.particles.length === 0) {
+                fireworks.splice(index, 1);
+            }
         }
     });
+    ctx.globalAlpha = 1;
 }
 
 function update() {
@@ -292,7 +336,7 @@ function gameLoop(currentTime) {
         ctx.fillText('You Win!', canvas.width / 2 - 80, canvas.height / 2);
         
         // Create new fireworks
-        if (Math.random() < 0.1) {
+        if (Math.random() < 0.3) {  // Increased probability
             fireworks.push(createFirework());
         }
         
