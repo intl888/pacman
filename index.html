@@ -13,13 +13,43 @@
             margin: 0;
             background-color: #000;
         }
+        #gameContainer {
+            position: relative;
+        }
         #gameBoard {
             border: 2px solid blue;
         }
+        #touchControls {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 150px;
+        }
+        #touchControls div {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 25px;
+        }
+        #upButton { top: 0; left: 50px; }
+        #leftButton { top: 50px; left: 0; }
+        #rightButton { top: 50px; right: 0; }
+        #downButton { bottom: 0; left: 50px; }
     </style>
 </head>
 <body>
-    <canvas id="gameBoard" width="450" height="500"></canvas>
+    <div id="gameContainer">
+        <canvas id="gameBoard" width="450" height="500"></canvas>
+        <div id="touchControls">
+            <div id="upButton"></div>
+            <div id="leftButton"></div>
+            <div id="rightButton"></div>
+            <div id="downButton"></div>
+        </div>
+    </div>
     <script>
        const canvas = document.getElementById('gameBoard');
 const ctx = canvas.getContext('2d');
@@ -221,11 +251,7 @@ function drawFireworks() {
     });
     ctx.globalAlpha = 1;
 }
-
-function update() {
-    if (gameWon) return;
-
-    // Pacman movement
+function movePacman() {
     let newX = pacman.x;
     let newY = pacman.y;
 
@@ -254,6 +280,12 @@ function update() {
             return;
         }
     }
+}
+
+function update() {
+    if (gameWon) return;
+
+    movePacman();
 
     // Simple ghost movement (random)
     ghosts.forEach(ghost => {
@@ -366,6 +398,15 @@ document.addEventListener('keydown', (event) => {
             break;
     }
 });
+
+function handleTouchStart(direction) {
+    pacman.direction = direction;
+}
+
+document.getElementById('upButton').addEventListener('touchstart', () => handleTouchStart('up'));
+document.getElementById('leftButton').addEventListener('touchstart', () => handleTouchStart('left'));
+document.getElementById('rightButton').addEventListener('touchstart', () => handleTouchStart('right'));
+document.getElementById('downButton').addEventListener('touchstart', () => handleTouchStart('down'));
 
 resetGame();
 gameLoop();
